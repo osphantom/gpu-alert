@@ -1,0 +1,49 @@
+name: GPU Alert
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes (GitHub's minimum; may run later)
+  workflow_dispatch: {}       # lets you run it manually from the Actions tab
+
+# Allow the workflow to commit seen.json back to the repo
+permissions:
+  contents: write
+
+# If a run is still going when the next is due, don't pile up
+concurrency:
+  group: gpu-alert
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install feedparser
+
+      - name: Run alerter
+        env:
+          GPU_EMAIL_FROM: ${{ secrets.GPU_EMAIL_FROM }}
+          GPU_EMAIL_PASS: ${{ secrets.GPU_EMAIL_PASS }}
+          GPU_EMAIL_TO:   ${{ secrets.GPU_EMAIL_TO }}
+        run: python gpu_alert.py
+
+      - name: Save state
+        run: |
+          if [ -n "$(git status --porcelain seen.json)" ]; then
+            git config user.name  "gpu-alert-bot"
+            git config user.email "actions@github.com"
+            git add seen.json
+            git commit -m "update seen listings"
+            git push
+          else
+            echo "no state change"
+          fi
