@@ -86,7 +86,8 @@ def fetch(url):
 
 
 def main():
-    seen = load_seen()
+    seen = load_seen() 
+    send_email("[GPU] TEST - ignore", "If you got this, email alerts work.")
     first_run = len(seen) == 0
     new_hits = []
 
